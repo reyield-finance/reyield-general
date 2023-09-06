@@ -228,8 +228,12 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
         //transfer governance token to user
         IERC20(governanceToken).safeTransfer(msg.sender, unstakedAmount);
 
+        //XXX: seems the calculation is not necessary, could just set stakedAmount to 0, 
+        //but the other question is that the max stack amount is limited by the previledgeStakeAmount?
+
         //update staked amount
         permissionInfo.stakedAmount = permissionInfo.stakedAmount - unstakedAmount;
+        //XXX: is it necessary to update staked time?
         //update staked time
         permissionInfo.lastStakedAt = 0;
 
@@ -240,6 +244,7 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
     }
 
     function burnERC721(uint256 tokenId) external onlyNFTOwner(tokenId) whenNotPaused {
+        //XXX: is there metadata for the NFT? decide permanent logic in the this contract is not good.
         bool isPermanent = tokenIdToIsPermanent[tokenId];
         isPermanent
             ? _burnERC721ForPermanentPrivilegeAndLicenses(tokenId)
@@ -253,6 +258,8 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
 
         isStakedPrivilege = userToPermissionInfo[user].isStakedPrivilege;
 
+        //XXX: this logic means that if the user has permanent privilege, It can not burn timelimit NFT. 
+        //so if I have already staked, if I want to burn timelimit NFT, I have to unstake first?
         if (isPermanentPrivilege || isStakedPrivilege) {
             return (0, isPermanentPrivilege, isStakedPrivilege);
         }
@@ -288,6 +295,7 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
         emit TimeLimitedPrivilegeNFTBurned(msg.sender, tokenId, permissionInfo.privilegeExpiredAt);
     }
 
+    //XXX: tryfunction return `current`licenseAmount is misleading, it should be `expected`licenseAmount  
     // burn erc721 token to get permanent right of privilege & listing 3 tools
     function tryBurnERC721ForPermanentPrivilegeAndLicenses(
         address user
