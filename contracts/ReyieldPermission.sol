@@ -15,11 +15,13 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
     using SafeERC20 for IERC20;
 
     uint256 public privilegeStakeAmount;
+    bool public isERC20Activated;
+    bool public isERC721Activated;
 
     address public governance;
     address public officialAccount;
-    address public immutable governanceToken;
-    address public immutable reyieldNFT;
+    address public governanceToken;
+    address public reyieldNFT;
     uint256 public immutable daysTimeLimitedPrivilege;
     uint32 public immutable licenseAmountForPermanentPrivilegeNFT;
     mapping(uint32 => uint256) public licenseNoToBurnedTokenAmount;
@@ -64,27 +66,30 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
         _;
     }
 
+    modifier erc20Activated() {
+        require(isERC20Activated, "RPERC20A");
+        _;
+    }
+
+    modifier erc721Activated() {
+        require(isERC721Activated, "RPERC721A");
+        _;
+    }
+
     constructor(
         address _governance,
         address _officialAccount,
-        address _governanceToken,
-        address _reyieldNFT,
         uint256 _daysTimeLimitedPrivilege,
         uint32 _licenseAmountForPermanentPrivilegeNFT
     ) Pausable() {
         require(_governance != address(0), "RPG");
-        require(_governanceToken != address(0), "RPCGT");
-        require(_reyieldNFT != address(0), "RPCRN");
+        require(_officialAccount != address(0), "RPOA");
 
         governance = _governance;
         officialAccount = _officialAccount;
-        governanceToken = _governanceToken;
-        reyieldNFT = _reyieldNFT;
         daysTimeLimitedPrivilege = _daysTimeLimitedPrivilege;
         licenseAmountForPermanentPrivilegeNFT = _licenseAmountForPermanentPrivilegeNFT;
 
-        initPrivilegeStakeAmount(IERC20Extended(_governanceToken).decimals());
-        initLicenseNoToBurnedTokenAmount(IERC20Extended(_governanceToken).decimals());
         initOfficialAccountPermission();
     }
 
@@ -143,10 +148,38 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
         initOfficialAccountPermission();
     }
 
-    function updatePermanentNFTWhitelist(uint256[] calldata tokenIds) external onlyGovernance {
+    function updatePermanentNFTWhitelist(uint256[] calldata tokenIds) external onlyGovernance erc721Activated {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             tokenIdToIsPermanent[tokenIds[i]] = true;
         }
+    }
+
+    function setGovernanceToken(address _governanceToken) external onlyGovernance {
+        require(_governanceToken != address(0), "RPGT0");
+        governanceToken = _governanceToken;
+        initPrivilegeStakeAmount(IERC20Extended(_governanceToken).decimals());
+        initLicenseNoToBurnedTokenAmount(IERC20Extended(_governanceToken).decimals());
+    }
+
+    function setReyieldNFT(address _reyieldNFT) external onlyGovernance {
+        require(_reyieldNFT != address(0), "RPRN0");
+        reyieldNFT = _reyieldNFT;
+    }
+
+    function activateERC20() external onlyGovernance {
+        isERC20Activated = true;
+    }
+
+    function deactivateERC20() external onlyGovernance {
+        isERC20Activated = false;
+    }
+
+    function activateERC721() external onlyGovernance {
+        isERC721Activated = true;
+    }
+
+    function deactivateERC721() external onlyGovernance {
+        isERC721Activated = false;
     }
 
     function privilege(address user) external view override returns (bool) {
@@ -179,7 +212,7 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
 
     ///@notice burn erc20 tokens to get the right of listing tools
     ///@param licenseAmount license amount of user
-    function burnERC20ForLicense(uint32 licenseAmount) external whenNotPaused {
+    function burnERC20ForLicense(uint32 licenseAmount) external whenNotPaused erc20Activated {
         require(licenseAmount > 0, "RPLA0");
         PermissionInfo storage permissionInfo = userToPermissionInfo[msg.sender];
         uint32 origLicenseAmount = permissionInfo.licenseAmount;
@@ -199,7 +232,7 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
     }
 
     ///@notice stake erc20 tokens to get the privilege
-    function stakeERC20ForPrivilege() external whenNotPaused {
+    function stakeERC20ForPrivilege() external whenNotPaused erc20Activated {
         PermissionInfo storage permissionInfo = userToPermissionInfo[msg.sender];
         require(!permissionInfo.isStakedPrivilege, "RPSP");
 
@@ -219,7 +252,7 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
     }
 
     ///@notice unstake erc20 tokens
-    function unstakeERC20() external whenNotPaused {
+    function unstakeERC20() external whenNotPaused erc20Activated {
         PermissionInfo storage permissionInfo = userToPermissionInfo[msg.sender];
         require(permissionInfo.stakedAmount > 0, "RPSA0");
 
@@ -239,7 +272,7 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
         emit GovernanceTokenUnstaked(msg.sender, unstakedAmount);
     }
 
-    function burnERC721(uint256 tokenId) external onlyNFTOwner(tokenId) whenNotPaused {
+    function burnERC721(uint256 tokenId) external onlyNFTOwner(tokenId) whenNotPaused erc721Activated {
         bool isPermanent = tokenIdToIsPermanent[tokenId];
         isPermanent
             ? _burnERC721ForPermanentPrivilegeAndLicenses(tokenId)

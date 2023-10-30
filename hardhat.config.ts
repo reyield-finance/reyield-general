@@ -1,5 +1,6 @@
 import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
+import "hardhat-deploy";
 import { HardhatUserConfig } from "hardhat/config";
 
 require("solidity-coverage");
@@ -46,29 +47,55 @@ const config: HardhatUserConfig = {
       },
       mining: { auto: true },
     },
-    // optimisticEthereum: {
-    //   url: process.env.ALCHEMY_OPTIMISM_MAINNET || "",
-    //   accounts: [process.env.TEST_PRIVATE_KEY || ""],
-    // },
+    optimismGoerli: {
+      url: process.env.ALCHEMY_OPTIMISM_GOERLI || "",
+      accounts: [process.env.TEST_PRIVATE_KEY || ""],
+      // gas: 10000000,
+      // gasPrice: 1000000000,
+    },
+    optimism: {
+      url: process.env.ALCHEMY_OPTIMISM_MAINNET || "",
+      accounts: [process.env.TEST_PRIVATE_KEY || ""],
+      // gas: 10000000,
+      // gasPrice: 8000000,
+    },
   },
-  // etherscan: {
-  //   apiKey: {
-  //     optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY || "",
-  //   },
-  //   customChains: [
-  //     {
-  //       network: "optimisticEthereum",
-  //       chainId: 10,
-  //       urls: {
-  //         apiURL: "https://api-optimistic.etherscan.io/api",
-  //         browserURL: "https://optimistic.etherscan.io",
-  //       },
-  //     },
-  //   ],
-  // },
+  etherscan: {
+    apiKey: {
+      optimismGoerli: process.env.OPTIMISM_ETHERSCAN_API_KEY || "",
+      optimism: process.env.OPTIMISM_ETHERSCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "optimismGoerli",
+        chainId: 420,
+        urls: {
+          apiURL: "https://api-goerli-optimism.etherscan.io/api",
+          browserURL: "https://goerli-optimism.etherscan.io",
+        },
+      },
+      {
+        network: "optimism",
+        chainId: 10,
+        urls: {
+          apiURL: "https://api-optimistic.etherscan.io/api",
+          browserURL: "https://optimistic.etherscan.io",
+        },
+      },
+    ],
+  },
   mocha: {
     timeout: 20000000000,
-    // parallel: true,
+    parallel: false,
+  },
+
+  namedAccounts: {
+    deployer: {
+      default: 0,
+    },
+    multiSig: {
+      default: 0,
+    },
   },
 };
 

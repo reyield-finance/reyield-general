@@ -47,6 +47,8 @@
     "lint:sol": "solhint \"contracts/**/*.sol\" \"interfaces/**/*.sol\"",
     "lint:ts": "eslint --ignore-path ./.eslintignore --ext .js,.ts .",
     "test": "hardhat test",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "run:optimismGoerli": "hardhat run --network optimismGoerli",
+    "run:optimism": "hardhat run --network optimism"
   }
 }
