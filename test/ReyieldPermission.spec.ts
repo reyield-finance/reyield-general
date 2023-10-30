@@ -50,11 +50,13 @@ describe("REYIELD GENERAL", function () {
     ReyieldPermissionContract = (await ReyieldPermissionFactory.deploy(
       governance.address,
       official.address,
-      REYLDTokenContract,
-      NFTContract,
       90,
       3,
     )) as unknown as ReyieldPermission;
+    await ReyieldPermissionContract.connect(governance).setGovernanceToken(await REYLDTokenContract.getAddress());
+    await ReyieldPermissionContract.connect(governance).setReyieldNFT(await NFTContract.getAddress());
+    await ReyieldPermissionContract.connect(governance).activateERC20();
+    await ReyieldPermissionContract.connect(governance).activateERC721();
   }
 
   async function airdropNFTs(numAddressesToAirdrop: number) {
@@ -727,6 +729,41 @@ describe("REYIELD GENERAL", function () {
       expect(signer0PermissionInfo3[4]).to.be.equal(0);
       expect(signer0PermissionInfo3[5]).to.be.equal(0);
       expect(await ReyieldPermissionContract.privilege(signers[1])).to.be.true;
+    });
+  });
+
+  describe("deactivate erc20", () => {
+    it("Should fail after deactivate erc20", async () => {
+      let isERC20Activated = await ReyieldPermissionContract.isERC20Activated();
+      expect(isERC20Activated).to.be.true;
+
+      await ReyieldPermissionContract.connect(governance).deactivateERC20();
+
+      isERC20Activated = await ReyieldPermissionContract.isERC20Activated();
+      expect(isERC20Activated).to.be.false;
+
+      await expect(ReyieldPermissionContract.connect(signers[0]).stakeERC20ForPrivilege()).to.be.revertedWith(
+        "RPERC20A",
+      );
+      await expect(ReyieldPermissionContract.connect(signers[0]).unstakeERC20()).to.be.revertedWith("RPERC20A");
+      await expect(ReyieldPermissionContract.connect(signers[0]).burnERC20ForLicense(1)).to.be.revertedWith("RPERC20A");
+    });
+  });
+
+  describe("deactivate nft", () => {
+    it("Should fail after deactivate nft", async () => {
+      let isERC721Activated = await ReyieldPermissionContract.isERC721Activated();
+      expect(isERC721Activated).to.be.true;
+
+      await ReyieldPermissionContract.connect(governance).deactivateERC721();
+
+      isERC721Activated = await ReyieldPermissionContract.isERC721Activated();
+      expect(isERC721Activated).to.be.false;
+
+      await expect(ReyieldPermissionContract.connect(signers[0]).burnERC721(1)).to.be.revertedWith("RPERC721A");
+      await expect(ReyieldPermissionContract.connect(governance).updatePermanentNFTWhitelist([1])).to.be.revertedWith(
+        "RPERC721A",
+      );
     });
   });
 });
