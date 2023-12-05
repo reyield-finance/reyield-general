@@ -21,8 +21,8 @@ async function main() {
   await permission.waitForDeployment();
   console.log(`ReyieldPermission deployed, contract address: ${await permission.getAddress()}`);
 
-  const officialAccountPolygon = "0x5F11887e943D2Ef2B81FBf5D4DB471ed0dc17FD7";
-  const officialAccountOP = "0x5F11887e943D2Ef2B81FBf5D4DB471ed0dc17FD7";
+  const officialAccountPolygon = "0x12BC9925cBE9f66C8614d51164efD496BA814d38";
+  const officialAccountOP = "0xF769DFf3D3715a9773e00a9B0d62Dc754699b7CA";
   {
     const txResp = await permission.addOfficialAccount(officialAccountPolygon);
     await txResp.wait(CONFIRMATIONS);
