@@ -37,10 +37,11 @@ describe("REYIELD GENERAL", function () {
   let deployer: HardhatEthersSigner;
   let governance: HardhatEthersSigner;
   let official: HardhatEthersSigner;
+  let official2: HardhatEthersSigner;
   let signers: HardhatEthersSigner[];
 
   async function deployContracts() {
-    [deployer, governance, official, ...signers] = await ethers.getSigners();
+    [deployer, governance, official, official2, ...signers] = await ethers.getSigners();
 
     const REYLDFactory = await ethers.getContractFactory("REYLDToken");
     const NftFactory = await ethers.getContractFactory("REYIELD_NFT");
@@ -49,7 +50,6 @@ describe("REYIELD GENERAL", function () {
     REYLDTokenContract = (await REYLDFactory.deploy(governance.address)) as unknown as REYLDToken;
     ReyieldPermissionContract = (await ReyieldPermissionFactory.deploy(
       governance.address,
-      official.address,
       90,
       3,
     )) as unknown as ReyieldPermission;
@@ -137,6 +137,7 @@ describe("REYIELD GENERAL", function () {
 
   describe("Official Account", async () => {
     it("Should privilege is true & license is uint32.max", async () => {
+      await ReyieldPermissionContract.connect(governance).addOfficialAccount(official.address);
       expect(await ReyieldPermissionContract.privilege(official.address)).to.be.true;
       const officialPermissionInfo = await ReyieldPermissionContract.getPermissionInfo(official.address);
       expect(officialPermissionInfo[0]).to.be.true;
@@ -148,37 +149,75 @@ describe("REYIELD GENERAL", function () {
       expect(officialPermissionInfo[5]).to.be.equal(0);
     });
 
-    it("Should changeOfficialAccount() success by governance", async () => {
-      const newOfficial = signers[2];
-      await ReyieldPermissionContract.connect(governance).changeOfficialAccount(newOfficial.address);
-      expect(await ReyieldPermissionContract.officialAccount()).to.be.equal(newOfficial.address);
+    it("Should addOfficialAccount() success by governance", async () => {
+      await ReyieldPermissionContract.connect(governance).addOfficialAccount(official.address);
+      await ReyieldPermissionContract.connect(governance).addOfficialAccount(official2.address);
+      expect(await ReyieldPermissionContract.officialAccounts(0)).to.be.equal(official.address);
+      expect(await ReyieldPermissionContract.officialAccounts(1)).to.be.equal(official2.address);
+      {
+        const newOfficialPermissionInfo = await ReyieldPermissionContract.getPermissionInfo(official.address);
+        expect(newOfficialPermissionInfo[0]).to.be.true;
+        expect(newOfficialPermissionInfo[1]).to.be.false;
+        const UINT32_MAX = 4294967295;
+        expect(newOfficialPermissionInfo[2]).to.be.equal(UINT32_MAX);
+        expect(newOfficialPermissionInfo[3]).to.be.equal(0);
+        expect(newOfficialPermissionInfo[4]).to.be.equal(0);
+        expect(newOfficialPermissionInfo[5]).to.be.equal(0);
+      }
+      {
+        const newOfficialPermissionInfo = await ReyieldPermissionContract.getPermissionInfo(official2.address);
+        expect(newOfficialPermissionInfo[0]).to.be.true;
+        expect(newOfficialPermissionInfo[1]).to.be.false;
+        const UINT32_MAX = 4294967295;
+        expect(newOfficialPermissionInfo[2]).to.be.equal(UINT32_MAX);
+        expect(newOfficialPermissionInfo[3]).to.be.equal(0);
+        expect(newOfficialPermissionInfo[4]).to.be.equal(0);
+        expect(newOfficialPermissionInfo[5]).to.be.equal(0);
+      }
 
-      const newOfficialPermissionInfo = await ReyieldPermissionContract.getPermissionInfo(newOfficial.address);
-      expect(newOfficialPermissionInfo[0]).to.be.true;
-      expect(newOfficialPermissionInfo[1]).to.be.false;
-      const UINT32_MAX = 4294967295;
-      expect(newOfficialPermissionInfo[2]).to.be.equal(UINT32_MAX);
-      expect(newOfficialPermissionInfo[3]).to.be.equal(0);
-      expect(newOfficialPermissionInfo[4]).to.be.equal(0);
-      expect(newOfficialPermissionInfo[5]).to.be.equal(0);
+      await ReyieldPermissionContract.connect(governance).removeOfficialAccount(official.address);
+      {
+        const oldOfficialPermissionInfo = await ReyieldPermissionContract.getPermissionInfo(official.address);
+        expect(oldOfficialPermissionInfo[0]).to.be.false;
+        expect(oldOfficialPermissionInfo[1]).to.be.false;
+        expect(oldOfficialPermissionInfo[2]).to.be.equal(0);
+        expect(oldOfficialPermissionInfo[3]).to.be.equal(0);
+        expect(oldOfficialPermissionInfo[4]).to.be.equal(0);
+        expect(oldOfficialPermissionInfo[5]).to.be.equal(0);
+      }
 
-      const oldOfficialPermissionInfo = await ReyieldPermissionContract.getPermissionInfo(official.address);
-      expect(oldOfficialPermissionInfo[0]).to.be.false;
-      expect(oldOfficialPermissionInfo[1]).to.be.false;
-      expect(oldOfficialPermissionInfo[2]).to.be.equal(0);
-      expect(oldOfficialPermissionInfo[3]).to.be.equal(0);
-      expect(oldOfficialPermissionInfo[4]).to.be.equal(0);
-      expect(oldOfficialPermissionInfo[5]).to.be.equal(0);
+      expect(await ReyieldPermissionContract.officialAccounts(0)).to.be.equal(official2.address);
     });
 
-    it("Should changeOfficialAccount() fail if not governance", async () => {
+    it("Should removeOfficialAccount() fail if address is not official account", async () => {
+      await expect(
+        ReyieldPermissionContract.connect(governance).removeOfficialAccount(official.address),
+      ).to.be.revertedWith("RPOAE");
+    });
+
+    it("Should addOfficialAccount() fail if address is official account", async () => {
+      await ReyieldPermissionContract.connect(governance).addOfficialAccount(official.address);
+      await expect(
+        ReyieldPermissionContract.connect(governance).addOfficialAccount(official.address),
+      ).to.be.revertedWith("RPOAE");
+    });
+
+    it("Should addOfficialAccount() fail if not governance", async () => {
       const newOfficial = signers[2];
       await expect(
-        ReyieldPermissionContract.connect(signers[3]).changeOfficialAccount(newOfficial.address),
+        ReyieldPermissionContract.connect(signers[3]).addOfficialAccount(newOfficial.address),
+      ).to.be.revertedWith("RPOG");
+    });
+
+    it("Should removeOfficialAccount() fail if not governance", async () => {
+      const newOfficial = signers[2];
+      await expect(
+        ReyieldPermissionContract.connect(signers[3]).removeOfficialAccount(newOfficial.address),
       ).to.be.revertedWith("RPOG");
     });
 
     it("Should fail if official account burn ERC20 because of uint32 overflow", async () => {
+      await ReyieldPermissionContract.connect(governance).addOfficialAccount(official.address);
       const burnedAmount: bigint = BURN_AMOUNT_LICENSE_MAP.get(1) as bigint;
       const licenseAmount = 1;
       await transferERC20(official, burnedAmount);

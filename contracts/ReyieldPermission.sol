@@ -19,7 +19,9 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
     bool public isERC721Activated;
 
     address public governance;
-    address public officialAccount;
+    address[] public officialAccounts;
+    mapping(address => bool) isOfficialAccount;
+
     address public governanceToken;
     address public reyieldNFT;
     uint256 public immutable daysTimeLimitedPrivilege;
@@ -56,6 +58,14 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
     ///@param licenseAmount license amount of user
     event PermanentPrivilegeNFTBurned(address indexed user, uint256 tokenId, uint32 licenseAmount);
 
+    ///@notice emitted when a official account is added
+    ///@param officialAccount address of official account
+    event OfficialAccountAdded(address indexed officialAccount);
+
+    ///@notice emitted when a official account is removed
+    ///@param officialAccount address of official account
+    event OfficialAccountRemoved(address indexed officialAccount);
+
     modifier onlyGovernance() {
         require(msg.sender == governance, "RPOG");
         _;
@@ -78,19 +88,14 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
 
     constructor(
         address _governance,
-        address _officialAccount,
         uint256 _daysTimeLimitedPrivilege,
         uint32 _licenseAmountForPermanentPrivilegeNFT
     ) Pausable() {
         require(_governance != address(0), "RPG");
-        require(_officialAccount != address(0), "RPOA");
 
         governance = _governance;
-        officialAccount = _officialAccount;
         daysTimeLimitedPrivilege = _daysTimeLimitedPrivilege;
         licenseAmountForPermanentPrivilegeNFT = _licenseAmountForPermanentPrivilegeNFT;
-
-        initOfficialAccountPermission();
     }
 
     function pause() external onlyGovernance {
@@ -130,22 +135,37 @@ contract ReyieldPermission is IReyieldPermission, Pausable {
         licenseNoToBurnedTokenAmount[20] = 32_913_601 * decimalMultiplier;
     }
 
-    function initOfficialAccountPermission() private {
-        userToPermissionInfo[officialAccount].isPermanentPrivilege = true;
-        userToPermissionInfo[officialAccount].licenseAmount = type(uint32).max;
-    }
-
     function changeGovernance(address _governance) external onlyGovernance {
         require(_governance != address(0), "RPG");
         governance = _governance;
     }
 
-    function changeOfficialAccount(address _newOfficialAccount) external onlyGovernance {
-        require(_newOfficialAccount != address(0), "RPOA");
-        userToPermissionInfo[officialAccount].isPermanentPrivilege = false;
-        userToPermissionInfo[officialAccount].licenseAmount = 0;
-        officialAccount = _newOfficialAccount;
-        initOfficialAccountPermission();
+    function addOfficialAccount(address _officialAccount) external onlyGovernance {
+        require(_officialAccount != address(0), "RPOA");
+        require(!isOfficialAccount[_officialAccount], "RPOAE");
+
+        userToPermissionInfo[_officialAccount].isPermanentPrivilege = true;
+        userToPermissionInfo[_officialAccount].licenseAmount = type(uint32).max;
+        officialAccounts.push(_officialAccount);
+        isOfficialAccount[_officialAccount] = true;
+        emit OfficialAccountAdded(_officialAccount);
+    }
+
+    function removeOfficialAccount(address _officialAccount) external onlyGovernance {
+        require(_officialAccount != address(0), "RPOA");
+        require(isOfficialAccount[_officialAccount], "RPOAE");
+
+        userToPermissionInfo[_officialAccount].isPermanentPrivilege = false;
+        userToPermissionInfo[_officialAccount].licenseAmount = 0;
+        for (uint256 i = 0; i < officialAccounts.length; i++) {
+            if (officialAccounts[i] == _officialAccount) {
+                officialAccounts[i] = officialAccounts[officialAccounts.length - 1];
+                officialAccounts.pop();
+                break;
+            }
+        }
+        isOfficialAccount[_officialAccount] = false;
+        emit OfficialAccountRemoved(_officialAccount);
     }
 
     function updatePermanentNFTWhitelist(uint256[] calldata tokenIds) external onlyGovernance erc721Activated {

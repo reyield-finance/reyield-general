@@ -10,3 +10,5 @@ types
 cache
 artifacts
 
+_*
+.DS_Store
