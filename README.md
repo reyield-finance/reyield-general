@@ -17,6 +17,11 @@
 
 <br/>
 
+### REYLD Airdrop Reward
+* claim airdrop reward
+
+<br/>
+
 ### REYIELD NFTs
 * burn Permanent Privilege NFT for permanent REYIELD Privilege & Licenses of Listing Strategies
 * burn Time-limited Privilege NFT for time-limited REYIELD Privilege
